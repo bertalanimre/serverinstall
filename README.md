@@ -10,7 +10,7 @@ This scripts installs basically a webserver ready to use with the followings ins
 * PHP-FPM - for PHP websites
 * MySQL 5.7 - Database
 * Varnish - For faster website service
- *Composer - For easier installation of Laravel 5+ websites
+* Composer - For easier installation of Laravel 5+ websites
 * Memcached - For better memory useage
 * Fail2Ban - Intruder Prevention System
 
