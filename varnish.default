@@ -1,0 +1,121 @@
+#
+# This is an example VCL file for Varnish.
+#
+# It does not do anything by default, delegating control to the
+# builtin VCL. The builtin VCL is called when there is no explicit
+# return statement.
+#
+# See the VCL chapters in the Users Guide at https://www.varnish-cache.org/docs/
+# and https://www.varnish-cache.org/trac/wiki/VCLExamples for more examples.
+
+# Marker to tell the VCL compiler that this VCL has been adapted to the
+# new 4.0 format.
+vcl 4.0;
+
+# Default backend definition. Set this to point to your content server.
+backend default {
+    .host = "127.0.0.1";
+    .port = "8080";
+}
+
+sub vcl_recv {
+    # Happens before we check if we have this in cache already.
+    #
+    # Typically you clean up the request here, removing cookies you don't need,
+    # rewriting the request, etc.
+    unset req.http.X-Device;
+    set req.http.X-Device = "desktop";
+
+    if (req.http.Cookie ~ "(?i)X-Device-force") {
+        set req.http.X-Device = regsub(req.http.Cookie, "(?i).*X-Device-force=([^;]+);??.*", "\1");
+        set req.http.Cookie = regsuball(req.http.Cookie, "(^|; ) *X-Device-force=[^;]+;? *", "\1");
+        if (req.http.Cookie ~ "^ *$") { unset req.http.Cookie; }
+    } else {
+        if (req.http.User-Agent ~ "\(compatible; Googlebot-Mobile/2.1; \+http://www.google.com/bot.html\)" ||
+            (req.http.User-Agent ~ "iPhone" && req.http.User-Agent ~ "\(compatible; Googlebot/2.1; \+http://www.google.com/bot.html")) {
+            set req.http.X-Device = "mobile-bot"; }
+        elsif (req.http.User-Agent ~ "(?i)(ads|google|bing|msn|yandex|baidu|ro|career|seznam|)bot" ||
+            req.http.User-Agent ~ "(?i)(baidu|jike|symantec)spider" ||
+            req.http.User-Agent ~ "(?i)scanner" ||
+            req.http.User-Agent ~ "(?i)(web)crawler") {
+            set req.http.X-Device = "bot"; }
+        elsif (req.http.User-Agent ~ "(?i)ipad")        { set req.http.X-Device = "tablet"; }
+        elsif (req.http.User-Agent ~ "(?i)ip(hone|od)") { set req.http.X-Device = "mobile"; }
+        elsif (req.http.User-Agent ~ "(?i)android.*(mobile|mini)") { set req.http.X-Device = "mobile"; }
+        elsif (req.http.User-Agent ~ "(?i)android 3")              { set req.http.X-Device = "tablet"; }
+        elsif (req.http.User-Agent ~ "Opera Mobi")                  { set req.http.X-Device = "mobile"; }
+        elsif (req.http.User-Agent ~ "(?i)android")         { set req.http.X-Device = "tablet"; }
+        elsif (req.http.User-Agent ~ "PlayBook; U; RIM Tablet")         { set req.http.X-Device = "tablet"; }
+        elsif (req.http.User-Agent ~ "hp-tablet.*TouchPad")         { set req.http.X-Device = "tablet"; }
+        elsif (req.http.User-Agent ~ "Kindle/3")         { set req.http.X-Device = "tablet"; }
+        elsif (req.http.User-Agent ~ "Touch.+Tablet PC" ||
+            req.http.User-Agent ~ "Windows NT [0-9.]+; [ARM;|WOW64;|Win64; x64]" ) {
+                set req.http.X-Device = "tablet";
+        }
+        elsif (req.http.User-Agent ~ "Mobile.+Firefox")     { set req.http.X-Device = "mobile"; }
+        elsif (req.http.User-Agent ~ "^HTC" ||
+            req.http.User-Agent ~ "Fennec" ||
+            req.http.User-Agent ~ "IEMobile" ||
+            req.http.User-Agent ~ "BlackBerry" ||
+            req.http.User-Agent ~ "BB10.*Mobile" ||
+            req.http.User-Agent ~ "GT-.*Build/GINGERBREAD" ||
+            req.http.User-Agent ~ "SymbianOS.*AppleWebKit") {
+            set req.http.X-Device = "mobile";
+        }
+        elsif (req.http.User-Agent ~ "(?i)symbian" ||
+            req.http.User-Agent ~ "(?i)^sonyericsson" ||
+            req.http.User-Agent ~ "(?i)^nokia" ||
+            req.http.User-Agent ~ "(?i)^samsung" ||
+            req.http.User-Agent ~ "(?i)^lg" ||
+            req.http.User-Agent ~ "(?i)bada" ||
+            req.http.User-Agent ~ "(?i)blazer" ||
+            req.http.User-Agent ~ "(?i)cellphone" ||
+            req.http.User-Agent ~ "(?i)iemobile" ||
+            req.http.User-Agent ~ "(?i)midp-2.0" ||
+            req.http.User-Agent ~ "(?i)u990" ||
+            req.http.User-Agent ~ "(?i)netfront" ||
+            req.http.User-Agent ~ "(?i)opera mini" ||
+            req.http.User-Agent ~ "(?i)palm" ||
+            req.http.User-Agent ~ "(?i)nintendo wii" ||
+            req.http.User-Agent ~ "(?i)playstation portable" ||
+            req.http.User-Agent ~ "(?i)portalmmm" ||
+            req.http.User-Agent ~ "(?i)proxinet" ||
+            req.http.User-Agent ~ "(?i)sonyericsson" ||
+            req.http.User-Agent ~ "(?i)symbian" ||
+            req.http.User-Agent ~ "(?i)windows\ ?ce" ||
+            req.http.User-Agent ~ "(?i)winwap" ||
+            req.http.User-Agent ~ "(?i)eudoraweb" ||
+            req.http.User-Agent ~ "(?i)htc" ||
+            req.http.User-Agent ~ "(?i)240x320" ||
+            req.http.User-Agent ~ "(?i)avantgo") {
+            set req.http.X-Device = "mobile";
+        }
+    }    
+}
+
+sub vcl_backend_response {
+    # Happens after we have read the response headers from the backend.
+    #
+    # Here you clean the response headers, removing silly Set-Cookie headers
+    # and other mistakes your backend does.
+    if (bereq.http.X-Device) {
+        if (!beresp.http.Vary) { # no Vary at all
+            set beresp.http.Vary = "X-Device";
+        } elseif (beresp.http.Vary !~ "X-Device") { # add to existing Vary
+            set beresp.http.Vary = beresp.http.Vary + ", X-Device";
+        }
+    }
+    # comment this out if you don't want the client to know your
+    #     # classification
+    set beresp.http.X-Device = bereq.http.X-Device;
+}
+
+sub vcl_deliver {
+    # Happens when we have all the pieces we need, and are about to send the
+    # response to the client.
+    #
+    # You can do accounting or modifying the final object here.
+    if ((req.http.X-Device) && (resp.http.Vary)) {
+        set resp.http.Vary = regsub(resp.http.Vary, "X-Device", "User-Agent");
+    }
+}

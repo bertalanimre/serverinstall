@@ -1,0 +1,108 @@
+#!/bin/sh
+
+yum update -y
+yum install vim mc wget epel-release -y
+wget http://dev.mysql.com/get/mysql57-community-release-el7-7.noarch.rpm
+yum localinstall mysql57-community-release-el7-7.noarch.rpm -y
+yum install mysql-community-server -y
+rpm -Uvh http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-6.noarch.rpm
+rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
+systemctl enable mysqld
+cat >/etc/yum.repos.d/nginx.repo << EOL
+[nginx]
+name=nginx repo
+baseurl=http://nginx.org/packages/centos/\$releasever/\$basearch/
+gpgcheck=0
+enabled=1
+EOL
+yum --enablerepo=remi,remi-php56 install nginx php-fpm php-devel php-mbstring php-common php-opcache php-pecl-apcu php-cli php-pear php-pdo php-mysqlnd php-pgsql php-pecl-mongo php-pecl-sqlite php-pecl-memcache php-pecl-memcached php-gd php-mcrypt php-xml -y
+systemctl stop httpd
+systemctl start php-fpm
+systemctl enable nginx
+systemctl enable php-fpm
+sed -i 's/include \/etc\/nginx\/conf.d\/\*\.conf;/#include \/etc\/nginx\/conf.d\/*.conf;/' /etc/nginx/nginx.conf
+sed -i '/#include \/etc\/nginx/a \ \ \ \ include \/etc\/nginx\/sites-enabled\/*.conf;' /etc/nginx/nginx.conf
+systemctl restart nginx
+yum install git npm memcached httpd-tools libpng-devel -y
+systemctl enable memcached
+systemctl start memcached
+yum install fail2ban varnish -y
+cat <<EOF >> /etc/fail2ban/jail.local
+[sshd]
+enabled = true
+EOF
+systemctl start fail2ban
+systemctl enable fail2ban
+systemctl start firewalld
+systemctl enable firewalld
+systemctl enable varnish
+cp varnish.default /etc/varnish/default.vcl
+mv /etc/varnish/varnish.params /etc/varnish/varnish.params.orig
+cp varnish.params /etc/varnish/varnish.params
+systemctl start varnis
+systemctl start nginx
+firewall-cmd --zone=`firewall-cmd --get-default-zone` --change-interface=eth0
+firewall-cmd --zone=`firewall-cmd --get-default-zone` --add-service=http
+firewall-cmd --zone=`firewall-cmd --get-default-zone` --add-service=https
+firewall-cmd --runtime-to-permanent
+firewall-cmd --list-all
+yum install composer --enablerepo=remi-php56 -y
+mkdir /etc/nginx/sites-available
+mkdir /etc/nginx/sites-enabled
+mkdir /etc/nginx/ssl
+echo ""
+echo ""
+echo "==================="
+echo "Firewall settings:"
+echo "==================="
+firewall-cmd --list-all
+sleep 2
+echo ""
+echo ""
+echo "================"
+echo -e "NginX status"
+echo "================"
+systemctl status nginx
+ps aux | grep nginx
+sleep 2
+echo ""
+echo ""
+echo "=================="
+echo -e "PHP-FPM status"
+echo "=================="
+systemctl status php-fpm
+ps aux | grep php
+sleep 2
+echo ""
+echo ""
+echo "================"
+echo -e "MySQL status"
+echo "================"
+systemctl status mysqld
+sleep 2
+echo ""
+echo ""
+echo "==================="
+echo -e "Firewall status"
+echo "==================="
+systemctl status firewalld
+sleep 1
+echo ""
+echo ""
+echo "==================="
+echo -e "Fail2Ban status"
+echo "==================="
+systemctl status fail2ban
+sleep 2
+echo ""
+echo ""
+echo "==================="
+echo -e "Varnish status"
+echo "==================="
+systemctl status varnish
+sleep 2
+echo ""
+echo ""
+echo "Remaining thing needs to be done as SUDO:"
+echo "\"grep 'temporary password' /var/log/mysqld.log\" for accessing the database for the 1st time" 
+echo "Add new user with SSH key and disable PasswordAuthentication in /etc/ssh/sshd_config"
