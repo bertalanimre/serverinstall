@@ -1,5 +1,5 @@
 # serverinstall
-Install NginX, PHP 5.6, MySQL 5.7, Varnish and Fail2Ban on CentOS 7+, RedHat 7+ servers
+Install NginX, PHP 7.1, MySQL 5.7, Varnish and Fail2Ban on CentOS 7+, RedHat 7+ servers
 
 The only thing you might need to change is in line 44! Change the network interface name in the file "InitNewServer" if yours it not ETH0!
 
@@ -26,7 +26,7 @@ What the script does in order:
 * starts and enables mysqld
 * installs remi repository
 * installs nginx repository
-* installs PHP-FPM 5.6 and latest NginX
+* installs PHP-FPM 7.1 and latest NginX
 * starts and enables php-fpm and nginx
 * changes nginx configuration to use /etc/nginx/sites-enabled for config files
 * restarts nginx
