@@ -15,8 +15,9 @@ baseurl=http://nginx.org/packages/centos/\$releasever/\$basearch/
 gpgcheck=0
 enabled=1
 EOL
-yum --enablerepo=remi,remi-php56 install nginx php-fpm php-devel php-mbstring php-common php-opcache php-pecl-apcu php-cli php-pear php-pdo php-mysqlnd php-pgsql php-pecl-mongo php-pecl-sqlite php-pecl-memcache php-pecl-memcached php-gd php-mcrypt php-xml -y
+yum --enablerepo=remi,remi-php71 install nginx php php-common php-fpm php-devel php-mbstring php-common php-opcache php-pecl-apcu php-cli php-pear php-pdo php-mysqlnd php-pgsql php-pecl-memcache php-pecl-memcached php-gd php-mcrypt php-xml -y
 systemctl stop httpd
+systemctl start nginx
 systemctl start php-fpm
 systemctl enable nginx
 systemctl enable php-fpm
@@ -44,9 +45,11 @@ systemctl start nginx
 firewall-cmd --zone=`firewall-cmd --get-default-zone` --change-interface=eth0
 firewall-cmd --zone=`firewall-cmd --get-default-zone` --add-service=http
 firewall-cmd --zone=`firewall-cmd --get-default-zone` --add-service=https
+firewall-cmd --zone=`firewall-cmd --get-default-zone` --add-port=6556/tcp
 firewall-cmd --runtime-to-permanent
 firewall-cmd --list-all
-yum install composer --enablerepo=remi-php56 -y
+systemctl start mysqld
+yum install composer --enablerepo=remi-php71 -y
 mkdir /etc/nginx/sites-available
 mkdir /etc/nginx/sites-enabled
 mkdir /etc/nginx/ssl
@@ -106,3 +109,6 @@ echo ""
 echo "Remaining thing needs to be done as SUDO:"
 echo "\"grep 'temporary password' /var/log/mysqld.log\" for accessing the database for the 1st time" 
 echo "Add new user with SSH key and disable PasswordAuthentication in /etc/ssh/sshd_config"
+echo "The system will reboot in 5 seconds"
+sleep 5
+reboot
