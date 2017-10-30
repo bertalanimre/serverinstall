@@ -29,6 +29,15 @@ systemctl enable memcached
 systemctl start memcached
 yum install fail2ban varnish -y
 cat <<EOF >> /etc/fail2ban/jail.local
+[DEFAULT]
+bantime = 2629743
+#sender = fail2ban@myqwebsite.com
+#destemail = sysadmin@myqwebsite.com
+action = %(action_mwl)s
+ignoreip = 127.0.0.1/8
+findtime = 60
+maxretry = 4
+
 [sshd]
 enabled = true
 EOF
@@ -45,7 +54,6 @@ systemctl start nginx
 firewall-cmd --zone=`firewall-cmd --get-default-zone` --change-interface=eth0
 firewall-cmd --zone=`firewall-cmd --get-default-zone` --add-service=http
 firewall-cmd --zone=`firewall-cmd --get-default-zone` --add-service=https
-firewall-cmd --zone=`firewall-cmd --get-default-zone` --add-port=6556/tcp
 firewall-cmd --runtime-to-permanent
 firewall-cmd --list-all
 systemctl start mysqld
