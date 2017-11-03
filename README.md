@@ -13,13 +13,14 @@ This scripts installs basically a webserver ready to use with the followings ins
 * Composer - For easier installation of Laravel 5+ websites
 * Memcached - For better memory useage
 * Fail2Ban - Intruder Prevention System
+* NodeJS - Server Framework
 
 Install steps:
 * git clone https://github.com/bertalanimre/serverinstall.git
 * chmod +x InitNewServer
 * sh InitNewServer
 
-What the script does in order:
+What the script does:
 * Updates the system
 * installs vim, mc wget and epel-release
 * fetches and installs latest Mysql repository and mysql-community-server
@@ -30,7 +31,7 @@ What the script does in order:
 * starts and enables php-fpm and nginx
 * changes nginx configuration to use /etc/nginx/sites-enabled for config files
 * restarts nginx
-* installs git npm memcached httpd-tools and libpng-devel
+* installs git npm memcached httpd-tools nodejs and libpng-devel
 * starts and enables memcached
 * installs firewalld fail2ban and varnish
 * sets up fail2ban to watch for ssh connections
