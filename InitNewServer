@@ -1,13 +1,12 @@
 #!/bin/sh
 
+yum install epel-release -y
+yum install http://rpms.famillecollet.com/enterprise/remi-release-7.rpm -y
+yum install http://dev.mysql.com/get/mysql57-community-release-el7-7.noarch.rpm -y
+yum install https://labs.consol.de/repo/stable/rhel7/x86_64/labs-consol-stable.rhel7.noarch.rpm -y
+curl --silent --location https://rpm.nodesource.com/setup_6.x | bash -
 yum update -y
-yum install vim mc wget epel-release -y
-wget http://dev.mysql.com/get/mysql57-community-release-el7-7.noarch.rpm
-yum localinstall mysql57-community-release-el7-7.noarch.rpm -y
-yum install mysql-community-server -y
-rpm -Uvh http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-6.noarch.rpm
-rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
-systemctl enable mysqld
+yum install vim mc wget htop firewalld -y
 cat >/etc/yum.repos.d/nginx.repo << EOL
 [nginx]
 name=nginx repo
@@ -15,24 +14,16 @@ baseurl=http://nginx.org/packages/centos/7/\$basearch/
 gpgcheck=0
 enabled=1
 EOL
-yum --enablerepo=remi,remi-php71 install nginx php php-common php-fpm php-devel php-mbstring php-common php-opcache php-pecl-apcu php-cli php-pear php-pdo php-mysqlnd php-pgsql php-pecl-memcache php-pecl-memcached php-gd php-mcrypt php-xml -y
-systemctl stop httpd
-systemctl start nginx
-systemctl start php-fpm
-systemctl enable nginx
-systemctl enable php-fpm
+yum install mysql-community-server nginx git nodejs memcached httpd-tools libpng-devel fail2ban varnish check-mk-agent xinetd -y
+yum --enablerepo=remi,remi-php71 install composer php php-common php-fpm php-devel php-mbstring php-common php-opcache php-pecl-apcu php-cli php-pear php-pdo php-mysqlnd php-pgsql php-pecl-memcache php-pecl-memcached php-gd php-mcrypt php-xml -y
 sed -i 's/include \/etc\/nginx\/conf.d\/\*\.conf;/#include \/etc\/nginx\/conf.d\/*.conf;/' /etc/nginx/nginx.conf
 sed -i '/#include \/etc\/nginx/a \ \ \ \ include \/etc\/nginx\/sites-enabled\/*.conf;' /etc/nginx/nginx.conf
-systemctl restart nginx
-yum install git npm memcached httpd-tools libpng-devel -y
-systemctl enable memcached
-systemctl start memcached
-yum install fail2ban varnish -y
+sed -i 's/#gzip on;/gzip on;\n\t\tgzip_min_length 1100;\n\t\tgzip_buffers 4 32k;\n\t\tgzip_types text\/plain application\/x-javascript text\/xml text\/css;\n\t\tgzip_vary on;/g' /etc/nginx/nginx.conf
 cat <<EOF >> /etc/fail2ban/jail.local
 [DEFAULT]
 bantime = 2629743
-#sender = fail2ban@myqwebsite.com
-#destemail = sysadmin@myqwebsite.com
+#sender = fail2ban@mywebsite.com
+#destemail = sysadmin@mywebsite.com
 action = %(action_mwl)s
 ignoreip = 127.0.0.1/8
 findtime = 60
@@ -41,26 +32,21 @@ maxretry = 4
 [sshd]
 enabled = true
 EOF
-systemctl start fail2ban
-systemctl enable fail2ban
-systemctl start firewalld
-systemctl enable firewalld
-systemctl enable varnish
 cp varnish.default /etc/varnish/default.vcl
 mv /etc/varnish/varnish.params /etc/varnish/varnish.params.orig
 cp varnish.params /etc/varnish/varnish.params
-systemctl start varnis
-systemctl start nginx
+systemctl restart firewalld
 firewall-cmd --zone=`firewall-cmd --get-default-zone` --change-interface=eth0
 firewall-cmd --zone=`firewall-cmd --get-default-zone` --add-service=http
 firewall-cmd --zone=`firewall-cmd --get-default-zone` --add-service=https
 firewall-cmd --runtime-to-permanent
-firewall-cmd --list-all
-systemctl start mysqld
-yum install composer --enablerepo=remi-php71 -y
 mkdir /etc/nginx/sites-available
 mkdir /etc/nginx/sites-enabled
 mkdir /etc/nginx/ssl
+openssl dhparam -dsaparam -out /etc/nginx/ssl/dhparam.pem 4096
+systemctl disable httpd
+systemctl enable nginx mysqld php-fpm fail2ban varnish memcached firewalld xinetd
+systemctl restart nginx mysqld php-fpm fail2ban varnish memcached firewalld xinetd
 echo ""
 echo ""
 echo "==================="
@@ -114,9 +100,19 @@ systemctl status varnish
 sleep 2
 echo ""
 echo ""
+echo "==================="
+echo -e "NodeJS & NPM version"
+echo "==================="
+node -v
+npm -v
+sleep 2
+echo ""
+echo ""
 echo "Remaining thing needs to be done as SUDO:"
 echo "\"grep 'temporary password' /var/log/mysqld.log\" for accessing the database for the 1st time" 
 echo "Add new user with SSH key and disable PasswordAuthentication in /etc/ssh/sshd_config"
-echo "The system will reboot in 5 seconds"
+echo "If you use Check_MK, open the port 6556 with the following command:"
+echo "firewall-cmd --permanent --zone=`firewall-cmd --get-default-zone` --add-port=6556/tcp"
+echo "The system will reboot in 10 seconds"
 sleep 5
 reboot
